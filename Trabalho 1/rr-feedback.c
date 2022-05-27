@@ -1,6 +1,12 @@
+// Lembrar de excluir linhas/ trechos de códigos que contenham o seguinte comentário
+// >>> Excluir ao entregar atividade
+// Falta:
+// - gerar processos aleatórios (e conferir se não quebram nenhuma regra)
+
 // --- Bibliotecas
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 
 // --- Defines
@@ -69,6 +75,11 @@ Process* init_process(int cpu_time, int arrival, int* start_io);
 Process** generate_processes(); // >>> Excluir ao entregar atividade
 void print_process(Process* process);
 void print_queue(Process** queue, char* name);
+void run_process(Process* running_process,  int* time_slice);
+void terminate_process(Process* process);
+Process* run_io(Process* io_process, int io_index);
+Process** generate_random_processes(int n);
+int check_io(int time, int *repeated_io);
 
 
 // --- Variáveis globais
@@ -91,32 +102,32 @@ int main(){
     Process* printer_process = NULL;
     Process** processes_list = NULL;
 
-    // printf("Defina uma quantidade de processos entre 1 e 5 que deseja criar: ");
-    // scanf("%d", &numero_processos);
+    printf("Defina uma quantidade de processos entre 1 e 5 que deseja criar: ");
+    scanf("%d", &numero_processos);
 
-    // while((numero_processos < 1) || (numero_processos > 5)){
-    //     printf("Quantidade de processos deve ser um valor inteiro entre 1 e 5.\n");
-    //     printf("Defina uma quantidade de processos entre 1 e 5 que deseja criar: ");
-    //     scanf("%d", &numero_processos);
-    // }
+    while((numero_processos < 1) || (numero_processos > 5)){
+        printf("Quantidade de processos deve ser um valor inteiro entre 1 e 5.\n");
+        printf("Defina uma quantidade de processos entre 1 e 5 que deseja criar: ");
+        scanf("%d", &numero_processos);
+    }
 
     // >>> Excluir ao entregar atividade
     // Cria 5 processos
-    printf("Criando 5 processos...\n");
-    processes_list = generate_processes();
+    // printf("Criando 5 processos...\n");
+    // processes_list = generate_processes();
 
-    for(int i = 0; i < 5; i++){
-        print_process(processes_list[i]);
-    }
-    
-    // Criar numero_processos quantidade de processos aleatórios
-    // printf("Criando %d processos...\n", numero_processos);
-    // ToDo
-
-    // Imprime os processos criados
-    // for(int i = 0; i < numero_processos; i++){
+    // for(int i = 0; i < 5; i++){
     //     print_process(processes_list[i]);
     // }
+    
+    // Cria numero_processos quantidade de processos aleatórios
+    // printf("Criando %d processos...\n", numero_processos);
+    processes_list = generate_random_processes(numero_processos);
+
+    // Imprime os processos criados
+    for(int i = 0; i < numero_processos; i++){
+        print_process(processes_list[i]);
+    }
 
     int start =  0;
     while(start >= 0){
@@ -179,7 +190,6 @@ int main(){
             
         // Fila magnética
         if (magnetic_tape_process == NULL){
-            // Remove processo da fila
             magnetic_tape_process = remove_process(&magnetic_tape_queue);
             if(magnetic_tape_process != NULL)
                 printf(">> FITA MAGNETICA selecionou %d\n", magnetic_tape_process->pid);
@@ -187,7 +197,6 @@ int main(){
 
         // Impressora 
         if (printer_process == NULL){
-            // Remove processo da fila
             printer_process = remove_process(&printer_queue);
             if(printer_process != NULL)
                 printf(">> IMPRESSORA selecionou %d\n", printer_process->pid);
@@ -200,7 +209,7 @@ int main(){
         if(running_process != NULL){
             printf(">> CPU executando %d (time slice = %d)\n", running_process->pid, time_slice - 1);
             // Executa processo
-            // ToDo
+            run_process(running_process, &time_slice);
         } else{
             printf(">> CPU ociosa\n");
         }
@@ -210,7 +219,7 @@ int main(){
         if(disk_process != NULL){
             printf(">> DISCO executando: %d\n", disk_process->pid);
             // Executa I/O
-            // ToDo
+            run_io(disk_process, DISK);
         } else{
             printf(">> DISCO ocioso\n");
         }
@@ -219,7 +228,7 @@ int main(){
         if(magnetic_tape_process != NULL){
             printf(">> FITA MAGNETICA executando: %d\n", magnetic_tape_process->pid);
             // Executa I/O
-            // ToDo
+            run_io(magnetic_tape_process, MAGNETIC_TAPE);
         } else{
             printf(">> FITA MAGNETICA ociosa\n");
         }
@@ -228,19 +237,13 @@ int main(){
         if(printer_process != NULL){
             printf(">> IMPRESSORA executando: %d\n", printer_process->pid);
             // Executa I/O
-            // ToDo
+            run_io(printer_process, PRINTER);
         } else{
             printf(">> IMPRESSORA ociosa\n");
         }
 
-        // Preenche as tabelas a cada passo do Round-Robin
-        // ToDo
-
         // Incrementa o tempo
-        // start++;
-
-        // >>> Excluir quando entregar a atividade
-        start = -1; // debug
+        start++;
 
         // Verifica se todos os processos terminaram
         if(terminated == total_processes){
@@ -373,6 +376,63 @@ Process** generate_processes() {
     return processes_list;
 }
 
+// Cria lista de processos aleatórios
+Process** generate_random_processes(int n){
+
+    Process** processes_list = (Process**) malloc(n * sizeof(Process*));
+
+    srand(1);
+
+    // srand(time(NULL));
+
+    // Cria um processo por vez
+    for(int i = 0; i < n; i++){
+        // Inicializa o vetor de início de I/O
+        int start_io[IO_TYPES] = { -1, -1, -1 };
+
+        // Vetor com os valores repetidos do tempo de I/O
+        int repeated_io[IO_TYPES];
+
+        // Intervalo da CPU [1, MAX_CPU_TIME = 20]
+        int rand_cpu = (rand() % MAX_CPU_TIME) + 1;
+
+        // Intervalo do I/O [1, MAX_ARRIVAL = 10]
+        int rand_io = rand() % (MAX_ARRIVAL + 1) + 1;
+
+        for(int j = 0; j < IO_TYPES; j++){            
+            // Variável para escolher aleatoriamente se o processo terá I/O
+            int choice = rand() % 2;
+
+            if(!choice){
+                // Variável auxiliar para checar tempo do I/O [1, rand_cpu]
+                int aux = (rand() % rand_cpu) + 1;
+
+                // Se esse valor não foi escolhido, é válido
+                if(check_io(aux, start_io) == 0){
+                    start_io[j] = aux;
+                    repeated_io[j] = aux;
+                }
+            }
+        }
+
+        // Cria processo
+        processes_list[i] = init_process(rand_cpu, rand_io, start_io);
+    }
+
+    return processes_list;
+}
+
+// Checa valores repetidos no tempo de I/O
+int check_io(int time, int *repeated_io){
+    for(int i = 0; i < IO_TYPES; i++){
+        if(repeated_io[i] == time){
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 // Imprime as características de um processo
 void print_process(Process* process) {
 
@@ -452,4 +512,121 @@ void print_queue(Process** queue, char* name) {
     }
     
     printf("\n");
+}
+
+// Realiza a execução do processo na CPU
+void run_process(Process* running_process,  int* time_slice){
+
+    // Decrementa o time slice
+    (*time_slice)--;
+
+    // Decrementa o cpu_time do processo
+    running_process->cpu_time--;
+
+    // Verifica se algum I/O vai começar no próximo instante de tempo
+    int io_type = -1;
+    for(int i = 0; i < IO_TYPES; i++){
+        // Se existe um I/O que começa agora, seleciona o seu número
+        if(running_process->cpu_time == running_process->start_io[i]){
+            io_type = i;
+            break;
+        }
+    }
+
+    // Se selecionou um I/O, escolhe a fila de I/O correspondente
+    Process** queue = NULL;
+    if(io_type >= 0){
+        switch (io_type){
+            case DISK:
+                queue = &disk_queue;
+                break;
+            case MAGNETIC_TAPE:
+                queue = &magnetic_tape_queue;
+                break;
+            case PRINTER:
+                queue = &printer_queue;
+                break;
+        }
+        
+        // Adiciona o processo na fila
+        if(queue != NULL){
+            add_process(running_process, queue);
+            running_process->status = WAITING;
+            printf("Bloqueio de %d\n", running_process->pid);
+        }
+
+        // Zera o time slice para indicar que houve bloqueio
+        *time_slice = 0;
+    } 
+    // Se o tempo de serviço do processo terminou, termina o processo
+    else if(running_process->cpu_time == 0){
+        terminate_process(running_process);
+        *time_slice = 0;
+    } 
+    // Se o time slice acabou, faz a preempção
+    else if(*time_slice == 0){
+        printf("Preempção de %d\n", running_process->pid);
+        
+        // Implementa o feedback
+        // Move o processo para a fila de baixa prioridade
+        add_process(running_process, &low_priority_queue);
+        running_process->priority = LOW;
+
+        // Muda o status
+        running_process->status = READY;
+    }
+}
+
+// Faz as operações necessárias para terminar um processo
+void terminate_process(Process* process){
+    printf("Terminou o %d\n", process->pid);
+    process->status = TERMINATED;
+    terminated++;
+}
+
+// Realiza a execução do processo no I/O
+Process* run_io(Process* io_process, int io_index){
+
+    // Decrementa o duration_io
+    io_process->duration_io[io_index]--;
+
+    // Se tiver acabado a operação
+    if(io_process->duration_io[io_index] == 0){
+        // Se a parte da CPU também acabou
+        if(io_process->cpu_time == 0){
+            terminate_process(io_process);
+        } else{
+            io_process->status = READY;
+
+            // Implementa o feedback
+            // Se é DISCO, volta para a fila de BAIXA prioridade
+            if(io_index == DISK){
+                add_process(io_process, &low_priority_queue);
+                io_process->priority = LOW;
+            } else if((io_index == MAGNETIC_TAPE) || (io_index == PRINTER)){
+                add_process(io_process, &high_priority_queue);
+                io_process->priority = HIGH;
+            }
+        }
+
+        char* io_name;
+        switch(io_index){
+            case DISK:
+                io_name = "DISCO";
+                break;
+            case MAGNETIC_TAPE:
+                io_name = "FITA MAGNÉTICA";
+                break;
+            case PRINTER:
+                io_name = "IMPRESSORA";
+                break;
+        }
+
+        printf("Fim da operação de %s de %d\n", io_name, io_process->pid);
+
+        // Muda variável para indicar que o processo está livre
+        io_process = NULL;
+    }
+
+    return io_process;
 }
