@@ -32,8 +32,8 @@
 #define HIGH 1
 
 // Maior valor possível para cpu_time e arrival
-#define MAX_CPU_TIME 20
-#define MAX_ARRIVAL 10
+#define MAX_CPU_TIME 5
+#define MAX_ARRIVAL 3
 
 
 // --- Informações dos processos
@@ -528,7 +528,7 @@ void run_process(Process* running_process,  int* time_slice){
     } 
     // Se o time slice acabou, faz a preempção
     else if(*time_slice == 0){
-        printf("Preempção de %d\n", running_process->pid);
+        printf("Preempcao de %d\n", running_process->pid);
         
         // Implementa o feedback
         // Move o processo para a fila de baixa prioridade
