@@ -32,8 +32,8 @@
 #define HIGH 1
 
 // Maior valor possível para cpu_time e arrival
-#define MAX_CPU_TIME 5
-#define MAX_ARRIVAL 3
+#define MAX_CPU_TIME 10
+#define MAX_ARRIVAL 7
 
 
 // --- Informações dos processos
