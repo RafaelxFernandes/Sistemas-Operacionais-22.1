@@ -244,7 +244,7 @@ int main(){
     initialize();    
 
     for(i=0;i<10;i++){
-        if(process_list[NUM_PROCESS-1].id == -1){
+        if(i<NUM_PROCESS){
             create_process(i);
         }
         request_memory();
