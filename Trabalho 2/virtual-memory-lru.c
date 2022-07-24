@@ -174,10 +174,10 @@ Page *removeFromLRU(int page_number, int process_id, int mode){
         aux->next = NULL;
 
         printf("Removing page %d that belongs to process %d. Motive: memory full.\n", remove->number, remove->process_id);
-        process_list[remove->number].pagesOnMemory--;
+        process_list[remove->process_id].pagesOnMemory--;
     }
 
-    process_list[remove->number].virtualPageTable[remove->process_id] = -1;
+    process_list[remove->process_id].virtualPageTable[remove->number] = -1;
 
     return remove;
 }
@@ -243,7 +243,7 @@ int main(){
 
     initialize();    
 
-    for(i=0;i<10;i++){
+    for(i=0;i<20;i++){
         if(i<NUM_PROCESS){
             create_process(i);
         }
